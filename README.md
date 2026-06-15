@@ -2,7 +2,7 @@
 
 **A production‑ready fintech project demonstrating causal inference, sequential experimentation, and algorithmic fairness.**
 
-> *"Naive OLS overestimated the treatment effect by 100% – our causal correction prevented over‑allocating credit to high‑risk users."*
+> *"Naive OLS overestimated the treatment effect by more than 20× – our causal correction prevented over‑allocating credit to high‑risk users."*
 
 ---
 
@@ -30,27 +30,29 @@ We build a system that:
 
 ## 📊 Key Results
 
-- **Naive OLS** ATE = $1904 (100% overestimate)
+- **Naive OLS** ATE = $1904 (2,380% overestimate – due to strong confounding)
 - **IPW** ATE = $62 – corrects observed confounders
 - **Double ML** ATE = $73 – robust to non‑linearities
-- **DiD** ATE = $78 – validates parallel trends (p=0.68)
+- **DiD** ATE = $78 – validates parallel trends (p=0.68; note: synthetic data gives clean results; real data often fails this test)
 - **Fairness** – initial policy violates equalized odds (TPR disparity 0.42); mitigation reduces it to 0.18
 
-True ATE (from data generating process) = **$80**.
+True ATE (from data generating process) = **$80** per month.
+
+> **Note on OLS magnitude:** The extreme bias ($1904 vs $80) is a deliberate feature of the synthetic data to clearly demonstrate the importance of causal adjustment. In real-world settings, bias is usually smaller (2–5x). The causal methods still recover the true effect.
 
 ---
 
 ## 🚀 How to Run
 
 ```bash
-git clone https://github.com/yourusername/credit_limit_optimizer.git
-cd credit_limit_optimizer
+git clone https://github.com/ayberkince/credit-limit-optimizer.git
+cd credit-limit-optimizer
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# Run the interactive dashboard
-streamlit run src/dashboard/streamlit_app.py
+# Run the full analysis in terminal
+python main.py
 
-# Or run the full analysis in terminal
-python scripts/run_full_analysis.py
+# Or launch the interactive dashboard
+streamlit run src/dashboard/streamlit_app.py
