@@ -1,0 +1,40 @@
+# Configuration for credit limit optimizer
+data:
+  n_users: 10000
+  n_months: 12
+  treatment_month: 4
+  random_seed: 42
+  income:
+    distribution: lognormal
+    mu: 10.5
+    sigma: 0.6
+  credit_score:
+    distribution: normal
+    mean: 600
+    sd: 100
+    min: 300
+    max: 850
+  default_base_rate: 0.08
+  treatment_bias:
+    intercept: -2.0
+    income_coef: 0.5
+    credit_score_coef: 0.3
+  true_cate:
+    low: 40
+    medium_low: 80
+    medium: 120
+    medium_high: 100
+    high: 60
+  spending_income_corr: 0.6
+  revenue_noise_sd: 15
+causal:
+  method: "dml"
+  cross_fitting_folds: 2
+experiment:
+  mde: 0.05
+  alpha: 0.05
+  beta: 0.20
+  sequential_test: "sprt"
+fairness:
+  metric: "equalized_odds"
+  protected_attribute: "income_quintile"
