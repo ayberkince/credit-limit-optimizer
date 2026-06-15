@@ -51,7 +51,8 @@ def main():
     pre_control = panel[(panel['month'] < config['data']['treatment_month']) & (panel['treatment_assigned'] == 0)]['revenue']
     control_mean = pre_control.mean()
     control_std = pre_control.std()
-    pa = PowerAnalysis(alpha=0.05, beta=0.20, mde=0.05, control_mean=control_mean, control_std=control_std)
+    mde_dollars = 0.05 * control_mean
+    pa = PowerAnalysis(alpha=0.05, beta=0.20, mde=mde_dollars, control_mean=control_mean, control_std=control_std)
     n_per_group = pa.required_sample_size()
     print("Experiment Design (Power Analysis):")
     print(f"  Required sample size per group (MDE=5%): {n_per_group}")

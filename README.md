@@ -2,7 +2,7 @@
 
 **A production‑ready fintech project demonstrating causal inference, sequential experimentation, and algorithmic fairness.**
 
-> *"Naive OLS overestimated the treatment effect by more than 20× – our causal correction prevented over‑allocating credit to high‑risk users."*
+> *"Naive OLS overestimated the treatment effect by more than 15× – our causal correction prevents over‑allocating credit to high‑risk users."*
 
 ---
 
@@ -30,15 +30,19 @@ We build a system that:
 
 ## 📊 Key Results
 
-- **Naive OLS** ATE = $1904 (2,380% overestimate – due to strong confounding)
-- **IPW** ATE = $62 – corrects observed confounders
-- **Double ML** ATE = $73 – robust to non‑linearities
-- **DiD** ATE = $78 – validates parallel trends (p=0.68; note: synthetic data gives clean results; real data often fails this test)
-- **Fairness** – initial policy violates equalized odds (TPR disparity 0.42); mitigation reduces it to 0.18
+| Estimator | ATE (95% CI) | Interpretation |
+|-----------|--------------|----------------|
+| **True ATE (DGP)** | $80.00 | Ground truth (known from simulation) |
+| **Naive OLS** | $1,221.86 | Severely biased due to confounding |
+| **IPW** | $44.09 (-$12.75 – $93.22) | Adjusts for observed confounders, CI contains true effect |
+| **Double ML** | $81.65 ($81.13 – $82.22) | Neyman‑orthogonal, robust to non‑linearities |
+| **DiD** | $79.72 ($79.03 – $80.37) | Parallel trends satisfied (p=0.802) |
 
-True ATE (from data generating process) = **$80** per month.
+**Fairness Audit** (Equalized Odds):
+- Initial TPR disparity: **0.497** (violation)
+- Mitigated TPR disparity: **0.344** (improved)
 
-> **Note on OLS magnitude:** The extreme bias ($1904 vs $80) is a deliberate feature of the synthetic data to clearly demonstrate the importance of causal adjustment. In real-world settings, bias is usually smaller (2–5x). The causal methods still recover the true effect.
+> The mitigation reduces disparity while maintaining reasonable predictive performance (AUC = 0.617).
 
 ---
 
@@ -51,8 +55,8 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# Run the full analysis in terminal
+# Run full analysis (terminal)
 python main.py
 
-# Or launch the interactive dashboard
+# Launch interactive dashboard
 streamlit run src/dashboard/streamlit_app.py

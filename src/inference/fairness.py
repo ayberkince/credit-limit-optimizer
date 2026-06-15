@@ -96,11 +96,13 @@ class FairnessAuditor:
             'equalized_odds_violation': (ci['tpr_disparity_ci'][0] > 0.05) or (ci['fpr_disparity_ci'][0] > 0.05)
         }
 
-    def mitigate(self, threshold=0.5):
-        groups = self.df_final[self.protected_attr].unique()
+    def mitigate(self, threshold=None):
+        if threshold is None:
+            threshold = np.median(self.df_final['risk_score'])
         initial = self.audit_policy("initial", threshold)
         target_tpr = initial['metrics']['TPR'].mean()
-
+    
+        groups = self.df_final[self.protected_attr].unique()
         adjusted_thresholds = {}
         for g in groups:
             mask = self.df_final[self.protected_attr] == g
@@ -116,12 +118,12 @@ class FairnessAuditor:
                     best_dist = dist
                     best_thresh = th
             adjusted_thresholds[g] = best_thresh
-
+    
         y_pred_mitigated = np.zeros(len(self.df_final))
         for g, th in adjusted_thresholds.items():
             mask = self.df_final[self.protected_attr] == g
             y_pred_mitigated[mask] = (self.df_final.loc[mask, 'risk_score'].values > th).astype(int)
-
+    
         y_true = self.df_final['default'].values
         groups_arr = self.df_final[self.protected_attr].values
         results = []
@@ -132,7 +134,7 @@ class FairnessAuditor:
             results.append(metrics)
         df_mit = pd.DataFrame(results)
         ci = self._bootstrap_disparity(y_true, y_pred_mitigated, groups_arr)
-
+    
         return {
             'mitigated': True,
             'adjusted_thresholds': adjusted_thresholds,

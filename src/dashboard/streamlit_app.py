@@ -101,7 +101,7 @@ if run_button:
     
     # Sequential test (SPRT)
     st.subheader("Sequential Testing (SPRT)")
-    spr = SequentialTest(alpha=0.05, beta=0.20, mde=0.05, control_mean=control_mean)
+    spr = SequentialTest(alpha=0.05, beta=0.20, mde=0.05, control_mean=control_mean, control_std=control_std)
     fig3 = spr.plot_sprt(true_effect=0)
     st.pyplot(fig3)
     st.caption("Under null hypothesis (true effect = 0), the likelihood ratio stays below the reject boundary.")
