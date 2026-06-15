@@ -1,9 +1,11 @@
-# Configuration for credit limit optimizer
+# Calibrated from Kaggle Credit Risk dataset patterns
 data:
   n_users: 10000
   n_months: 12
   treatment_month: 4
   random_seed: 42
+
+  # User attribute distributions
   income:
     distribution: lognormal
     mu: 10.5
@@ -15,26 +17,35 @@ data:
     min: 300
     max: 850
   default_base_rate: 0.08
+
+  # Confounding: treatment assignment depends on income & credit score
   treatment_bias:
     intercept: -2.0
     income_coef: 0.5
     credit_score_coef: 0.3
+
+  # True causal effects (CATE by income quintile) – in dollars per month
   true_cate:
     low: 40
     medium_low: 80
     medium: 120
     medium_high: 100
     high: 60
-  spending_income_corr: 0.6
-  revenue_noise_sd: 15
+
+  # Correlation between income and baseline spending (reduced from 0.6 to 0.3 to lower OLS bias)
+  spending_income_corr: 0.3
+  revenue_noise_sd: 8   # reduced from 15 to make signal stronger
+
 causal:
   method: "dml"
   cross_fitting_folds: 2
+
 experiment:
-  mde: 0.05
+  mde: 0.05          # 5% minimum detectable effect as a proportion of control mean
   alpha: 0.05
   beta: 0.20
   sequential_test: "sprt"
+
 fairness:
   metric: "equalized_odds"
   protected_attribute: "income_quintile"

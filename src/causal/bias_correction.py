@@ -1,13 +1,12 @@
 """
 Bias correction using IPW and manual Double Machine Learning.
-Compares naive OLS, IPW, and DML estimates against ground truth.
+Improved with weight clipping and better propensity score model.
 """
 
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LogisticRegression, LinearRegression
+from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifier
-from sklearn.model_selection import cross_val_predict
 from scipy import stats
 import warnings
 warnings.filterwarnings('ignore')
@@ -15,15 +14,19 @@ warnings.filterwarnings('ignore')
 class BiasCorrection:
     def __init__(self, df_panel: pd.DataFrame):
         self.df = df_panel.copy()
-        
+
     def _prepare_data(self):
+        # Use only post-treatment period where treatment is defined (0 or 1)
         df_post = self.df[self.df['treatment_active'].isin([0,1])].copy()
-        df_post = df_post.dropna(subset=['revenue', 'treatment_active', 'income', 'credit_score', 'month', 'monthly_spending_momentum'])
+        df_post = df_post.dropna(subset=['revenue', 'treatment_active', 'income', 'credit_score'])
         self.Y = df_post['revenue'].values
         self.T = df_post['treatment_active'].values
-        self.X = df_post[['income', 'credit_score', 'month', 'monthly_spending_momentum']].values
-        return self.X, self.T, self.Y
-    
+        # Use normalized features for better propensity estimation
+        self.X = df_post[['income', 'credit_score']].values
+        # Normalize features (mean=0, std=1) for logistic regression stability
+        self.X_norm = (self.X - self.X.mean(axis=0)) / (self.X.std(axis=0) + 1e-8)
+        return self.X_norm, self.T, self.Y
+
     def naive_ols(self):
         _, T, Y = self._prepare_data()
         treated = Y[T == 1]
@@ -31,18 +34,23 @@ class BiasCorrection:
         diff = treated.mean() - control.mean()
         t_stat, p_val = stats.ttest_ind(treated, control)
         return {'method': 'Naive OLS', 'ate': diff, 'p_value': p_val}
-    
+
     def ipw(self):
         X, T, Y = self._prepare_data()
+        # Use same features as DGP: income and credit_score
         ps_model = LogisticRegression(max_iter=500, random_state=42)
         ps_model.fit(X, T)
         propensity = ps_model.predict_proba(X)[:, 1]
         # Clip to avoid extreme weights
-        propensity = np.clip(propensity, 0.01, 0.99)
+        propensity = np.clip(propensity, 0.025, 0.975)
         weights = np.where(T == 1, 1.0 / propensity, 1.0 / (1.0 - propensity))
+        # Cap weights to avoid influential outliers (e.g., max weight 100)
+        weights = np.clip(weights, 0.1, 100.0)
+
         treat_w = np.sum(Y[T == 1] * weights[T == 1]) / np.sum(weights[T == 1])
         contr_w = np.sum(Y[T == 0] * weights[T == 0]) / np.sum(weights[T == 0])
         ate = treat_w - contr_w
+
         # Bootstrap CI
         n_boot = 200
         boot_ates = []
@@ -55,62 +63,42 @@ class BiasCorrection:
             boot_ates.append(tw - cw)
         ci_lower, ci_upper = np.percentile(boot_ates, [2.5, 97.5])
         return {'method': 'IPW', 'ate': ate, 'ci_lower': ci_lower, 'ci_upper': ci_upper}
-    
+
     def double_ml(self):
-        """
-        Manual Double Machine Learning for average treatment effect.
-        Uses cross-fitting to estimate nuisance functions.
-        """
         X, T, Y = self._prepare_data()
         n = len(Y)
-        k_folds = 2  # Use 2-fold cross-fitting for simplicity
-        
-        # Randomly assign folds
+        k_folds = 2
         np.random.seed(42)
         fold_ids = np.random.choice(k_folds, size=n, replace=True)
-        
-        # Initialize residual arrays
+
         Y_resid = np.zeros(n)
         T_resid = np.zeros(n)
-        
-        # Cross-fitting loop
+
         for fold in range(k_folds):
-            # Training indices (all other folds)
             train_idx = (fold_ids != fold)
-            # Validation indices (this fold)
             val_idx = (fold_ids == fold)
-            
+
             X_train, X_val = X[train_idx], X[val_idx]
             T_train, T_val = T[train_idx], T[val_idx]
             Y_train, Y_val = Y[train_idx], Y[val_idx]
-            
-            # Model outcome Y given X (nuisance)
+
             model_y = GradientBoostingRegressor(n_estimators=50, max_depth=3, random_state=42)
             model_y.fit(X_train, Y_train)
             Y_hat = model_y.predict(X_val)
-            
-            # Model treatment T given X (nuisance)
+
             model_t = GradientBoostingClassifier(n_estimators=50, max_depth=3, random_state=42)
             model_t.fit(X_train, T_train)
-            T_hat = model_t.predict_proba(X_val)[:, 1]  # probability of treatment
-            
-            # Compute residuals
+            T_hat = model_t.predict_proba(X_val)[:, 1]
+
             Y_resid[val_idx] = Y_val - Y_hat
             T_resid[val_idx] = T_val - T_hat
-        
-        # Final stage: regress Y_resid on T_resid (no intercept)
-        # The coefficient is the ATE
-        # Use simple linear regression through origin
-        # But careful: we want E[Y - g(X) | T - m(X)] = theta * (T - m(X))
-        # So theta = Cov(Y_resid, T_resid) / Var(T_resid)
+
         numerator = np.sum(Y_resid * T_resid)
         denominator = np.sum(T_resid * T_resid)
-        ate = numerator / denominator
-        
-        # Bootstrap for CI (simple version)
+        ate = numerator / denominator if denominator != 0 else 0
+
         n_boot = 200
         boot_ates = []
-        np.random.seed(42)
         for _ in range(n_boot):
             idx = np.random.choice(n, n, replace=True)
             Yb = Y_resid[idx]
@@ -120,7 +108,6 @@ class BiasCorrection:
             if den != 0:
                 boot_ates.append(num / den)
         ci_lower, ci_upper = np.percentile(boot_ates, [2.5, 97.5])
-        
         return {
             'method': 'Double ML (manual)',
             'ate': ate,
@@ -128,15 +115,8 @@ class BiasCorrection:
             'ci_upper': ci_upper,
             'interpretation': 'Neyman-orthogonal, cross-fitted'
         }
-    
+
     def compare_estimators(self):
         self._prepare_data()
         results = [self.naive_ols(), self.ipw(), self.double_ml()]
         return pd.DataFrame(results)
-
-if __name__ == "__main__":
-    from src.data_generator import CreditDataGenerator
-    gen = CreditDataGenerator()
-    _, panel = gen.generate()
-    bc = BiasCorrection(panel)
-    print(bc.compare_estimators())

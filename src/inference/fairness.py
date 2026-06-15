@@ -1,6 +1,7 @@
 """
 Fairness audit with validation: uses calibrated risk model,
 bootstrapped confidence intervals, and visual verification.
+Supports saving plots to file.
 """
 
 import numpy as np
@@ -140,7 +141,7 @@ class FairnessAuditor:
             'fpr_disparity_ci': ci['fpr_disparity_ci']
         }
 
-    def plot_risk_calibration(self):
+    def plot_risk_calibration(self, save_path=None):
         fig, ax = plt.subplots(figsize=(6,5))
         ax.plot([0,1], [0,1], 'k--', label='Perfect calibration')
         ax.plot(self.calibration_curve[1], self.calibration_curve[0], marker='o', label='Risk model')
@@ -149,11 +150,12 @@ class FairnessAuditor:
         ax.set_title('Calibration of default risk model')
         ax.legend()
         plt.tight_layout()
-        plt.savefig('risk_calibration.png')
+        if save_path:
+            plt.savefig(save_path, dpi=100, bbox_inches='tight')
         plt.show()
         return fig
 
-    def plot_fairness_comparison(self):
+    def plot_fairness_comparison(self, save_path=None):
         initial = self.audit_policy("initial")
         mitigated = self.mitigate()
 
@@ -180,7 +182,8 @@ class FairnessAuditor:
 
         plt.suptitle(f"Fairness Audit: Equalized Odds\nInitial disparity (TPR: {initial['tpr_disparity']:.3f}, FPR: {initial['fpr_disparity']:.3f}) | Mitigated disparity (TPR: {mitigated['tpr_disparity']:.3f}, FPR: {mitigated['fpr_disparity']:.3f})")
         plt.tight_layout()
-        plt.savefig('fairness_audit.png')
+        if save_path:
+            plt.savefig(save_path, dpi=100, bbox_inches='tight')
         plt.show()
         return fig
 
@@ -219,6 +222,6 @@ if __name__ == "__main__":
     gen = CreditDataGenerator()
     _, panel = gen.generate()
     auditor = FairnessAuditor(panel)
-    auditor.plot_risk_calibration()
-    auditor.plot_fairness_comparison()
+    auditor.plot_risk_calibration(save_path="outputs/risk_calibration.png")
+    auditor.plot_fairness_comparison(save_path="outputs/fairness_audit.png")
     print(auditor.generate_fairness_report())

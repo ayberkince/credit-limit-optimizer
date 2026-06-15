@@ -113,7 +113,7 @@ class SequentialTest:
         
         return treat_accum, lr_history, decisions
     
-    def plot_sprt(self, true_effect=0, n_max=2000, step=10):
+    def plot_sprt(self, true_effect=0, n_max=2000, step=10, save_path=None):
         """Plot SPRT boundaries and simulated trajectory"""
         n_obs, lr, decisions = self.simulate_trajectory(true_effect, n_max, step)
         plt.figure(figsize=(12, 6))
@@ -123,11 +123,11 @@ class SequentialTest:
         plt.yscale('log')
         plt.xlabel('Sample Size per Group')
         plt.ylabel('Likelihood Ratio (log scale)')
-        plt.title(f'SPRT Monitoring (True Effect = {true_effect:.2f})')
+        plt.title(f'SPRT Monitoring (True Effect = ${true_effect:.2f})')
         plt.legend()
         plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.savefig(f'sprt_trajectory_effect_{true_effect}.png')
+        if save_path:
+            plt.savefig(save_path, dpi=100, bbox_inches='tight')
         plt.show()
         return plt.gcf()
 
