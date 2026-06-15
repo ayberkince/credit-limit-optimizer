@@ -66,9 +66,11 @@ class FairnessAuditor:
             'fpr_disparity_ci': (np.percentile(fpr_disps, 2.5), np.percentile(fpr_disps, 97.5))
         }
 
-    def audit_policy(self, policy_name, threshold=0.5):
-        y_true = self.df_final['default'].values
+    def audit_policy(self, policy_name, threshold=None):
+        if threshold is None:
+            threshold = self.df_final['risk_score'].median()
         y_pred = (self.df_final['risk_score'].values > threshold).astype(int)
+        y_true = self.df_final['default'].values
         groups = self.df_final[self.protected_attr].values
 
         results = []
@@ -156,30 +158,34 @@ class FairnessAuditor:
         return fig
 
     def plot_fairness_comparison(self, save_path=None):
-        initial = self.audit_policy("initial")
-        mitigated = self.mitigate()
-
-        fig, axes = plt.subplots(1, 2, figsize=(14,5))
-        groups = initial['metrics']['group'].unique()
+        initial = self.audit_policy("initial", threshold=None)
+        mitigated = self.mitigate(threshold=None)
+    
+        groups = sorted(initial['metrics']['group'].unique())
+        initial_metrics = initial['metrics'].set_index('group').reindex(groups)
+        mitigated_metrics = mitigated['metrics'].set_index('group').reindex(groups)
+    
         x = np.arange(len(groups))
         width = 0.35
-
-        axes[0].bar(x - width/2, initial['metrics']['TPR'], width, label='Initial', color='red', alpha=0.7)
-        axes[0].bar(x + width/2, mitigated['metrics']['TPR'], width, label='Mitigated', color='green', alpha=0.7)
+    
+        fig, axes = plt.subplots(1, 2, figsize=(14,5))
+    
+        axes[0].bar(x - width/2, initial_metrics['TPR'], width, label='Initial', color='red', alpha=0.7)
+        axes[0].bar(x + width/2, mitigated_metrics['TPR'], width, label='Mitigated', color='green', alpha=0.7)
         axes[0].set_ylabel('True Positive Rate (TPR)')
         axes[0].set_title('TPR by Income Group')
         axes[0].set_xticks(x)
         axes[0].set_xticklabels(groups, rotation=45)
         axes[0].legend()
-
-        axes[1].bar(x - width/2, initial['metrics']['FPR'], width, label='Initial', color='red', alpha=0.7)
-        axes[1].bar(x + width/2, mitigated['metrics']['FPR'], width, label='Mitigated', color='green', alpha=0.7)
+    
+        axes[1].bar(x - width/2, initial_metrics['FPR'], width, label='Initial', color='red', alpha=0.7)
+        axes[1].bar(x + width/2, mitigated_metrics['FPR'], width, label='Mitigated', color='green', alpha=0.7)
         axes[1].set_ylabel('False Positive Rate (FPR)')
         axes[1].set_title('FPR by Income Group')
         axes[1].set_xticks(x)
         axes[1].set_xticklabels(groups, rotation=45)
         axes[1].legend()
-
+    
         plt.suptitle(f"Fairness Audit: Equalized Odds\nInitial disparity (TPR: {initial['tpr_disparity']:.3f}, FPR: {initial['fpr_disparity']:.3f}) | Mitigated disparity (TPR: {mitigated['tpr_disparity']:.3f}, FPR: {mitigated['fpr_disparity']:.3f})")
         plt.tight_layout()
         if save_path:

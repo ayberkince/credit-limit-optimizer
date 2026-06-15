@@ -20,7 +20,7 @@ data:
 
   # Confounding: treatment assignment depends on income & credit score
   treatment_bias:
-    intercept: -2.0
+    intercept: -0.5
     income_coef: 0.5
     credit_score_coef: 0.3
 

@@ -86,7 +86,8 @@ def main(config_path="config.yaml"):
     spr = SequentialTest(alpha=config['experiment']['alpha'],
                          beta=config['experiment']['beta'],
                          mde=mde_fraction,
-                         control_mean=control_mean)
+                         control_mean=control_mean,
+                         control_std=control_std)
     print("\nSimulating SPRT under null hypothesis (true effect = 0)...")
     spr.plot_sprt(true_effect=0, save_path="outputs/sprt_null.png")
     print("SPRT plot saved to outputs/sprt_null.png")

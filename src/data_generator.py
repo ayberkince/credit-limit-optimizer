@@ -93,7 +93,7 @@ class CreditDataGenerator:
         # --- New default logic (logistic model) ---
         credit_norm = (df_users['credit_score'] - 600) / 100
         income_norm = (df_users['income'] - mean_income) / std_income
-        risk_score = 0.3 * credit_norm - 0.2 * income_norm + 0.5 * treatment
+        risk_score = -3.0 + 0.3 * credit_norm - 0.2 * income_norm + 0.5 * treatment
         default_prob = 1 / (1 + np.exp(-risk_score))
         default_prob = np.clip(default_prob, 0.01, 0.5)
         
