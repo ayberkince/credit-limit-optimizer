@@ -1,0 +1,8 @@
+{
+  "model_name": "survival_model",
+  "version": "20260616_144828",
+  "saved_at": "2026-06-16T14:48:28.612273",
+  "path": "models/survival_model_20260616_144828/model.joblib",
+  "n_events": 1566,
+  "n_users": 10000
+}

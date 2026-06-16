@@ -9,7 +9,8 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, roc_auc_score
-from sklearn.calibration import calibration_curve
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
 import matplotlib.pyplot as plt
 
 class FairnessAuditor:
@@ -17,19 +18,29 @@ class FairnessAuditor:
         self.df = df_panel.copy()
         self.protected_attr = protected_attr
         self.df_final = self.df[self.df['month'] == self.df['month'].max()].copy()
+        # Use "ever defaulted during the study" as target so all default events are captured,
+        # not just those that happen to fall on the last month.
+        user_ever_defaulted = self.df.groupby('user_id')['default'].max()
+        self.df_final['default'] = self.df_final['user_id'].map(user_ever_defaulted)
 
-        features = ['income', 'credit_score', 'monthly_spending_momentum', 'revenue']
+        features = ['income', 'credit_score']  # only causally linked to default in the DGP
         X = self.df_final[features].fillna(0).values
         y = self.df_final['default'].values
 
-        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.3, random_state=42)
-        self.risk_model = LogisticRegression(max_iter=1000)
+        X_train, X_val, y_train, y_val = train_test_split(
+            X, y, test_size=0.3, random_state=42, stratify=y
+        )
+        self.risk_model = Pipeline([
+            ('scaler', StandardScaler()),
+            ('clf', LogisticRegression(max_iter=1000, C=1.0))
+        ])
         self.risk_model.fit(X_train, y_train)
 
         self.df_final['risk_score'] = self.risk_model.predict_proba(X)[:, 1]
 
-        prob_true, prob_pred = calibration_curve(y_val, self.risk_model.predict_proba(X_val)[:, 1], n_bins=5)
-        self.calibration_curve = (prob_true, prob_pred)
+        self.X_val = X_val
+        self.y_val = y_val
+        self.y_val_prob = self.risk_model.predict_proba(X_val)[:, 1]
 
     def _compute_metrics(self, y_true, y_pred):
         tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
@@ -146,13 +157,43 @@ class FairnessAuditor:
         }
 
     def plot_risk_calibration(self, save_path=None):
-        fig, ax = plt.subplots(figsize=(6,5))
-        ax.plot([0,1], [0,1], 'k--', label='Perfect calibration')
-        ax.plot(self.calibration_curve[1], self.calibration_curve[0], marker='o', label='Risk model')
-        ax.set_xlabel('Mean predicted probability')
-        ax.set_ylabel('Fraction of positives')
-        ax.set_title('Calibration of default risk model')
-        ax.legend()
+        from sklearn.calibration import calibration_curve
+        from sklearn.metrics import roc_auc_score
+
+        y_true = self.df_final['default'].values
+        y_prob = self.df_final['risk_score'].values
+
+        auc = roc_auc_score(y_true, y_prob)
+
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+
+        # Left: calibration curve
+        prob_true, prob_pred = calibration_curve(
+            y_true, y_prob, n_bins=5, strategy='quantile'
+        )
+        ax1.plot([0, 1], [0, 1], 'k--', label='Perfect calibration')
+        ax1.plot(prob_pred, prob_true, marker='o', linewidth=2,
+                 markersize=8, label=f'Risk model (AUC={auc:.3f})')
+        ax1.set_xlabel('Mean predicted probability')
+        ax1.set_ylabel('Fraction of positives (actual default rate)')
+        ax1.set_title('Calibration curve')
+        ax1.set_xlim(max(0, y_prob.min() - 0.01), min(1, y_prob.max() + 0.01))
+        ax1.set_ylim(0, max(prob_true.max() * 1.3, 0.15))
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+
+        # Right: score distribution by default status
+        ax2.hist(y_prob[y_true == 0], bins=30, alpha=0.6,
+                 label='No default', density=True)
+        ax2.hist(y_prob[y_true == 1], bins=30, alpha=0.6,
+                 label='Default', density=True)
+        ax2.set_xlabel('Predicted probability')
+        ax2.set_ylabel('Density')
+        ax2.set_title(f'Score distribution by outcome\n(AUC={auc:.3f})')
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+
+        plt.suptitle('Risk model validation', fontsize=13)
         plt.tight_layout()
         if save_path:
             plt.savefig(save_path, dpi=100, bbox_inches='tight')
@@ -206,7 +247,7 @@ class FairnessAuditor:
         - AUC: {auc:.3f}
         - Calibration plot saved as 'risk_calibration.png'
 
-        INITIAL POLICY (threshold = 0.5):
+        INITIAL POLICY (threshold = median(risk_score)):
         - TPR disparity: {initial['tpr_disparity']:.3f} (95% CI: [{initial['tpr_disparity_ci'][0]:.3f}, {initial['tpr_disparity_ci'][1]:.3f}])
         - FPR disparity: {initial['fpr_disparity']:.3f} (95% CI: [{initial['fpr_disparity_ci'][0]:.3f}, {initial['fpr_disparity_ci'][1]:.3f}])
         - Equalized odds violated? {initial['equalized_odds_violation']}

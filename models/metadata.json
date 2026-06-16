@@ -1,0 +1,176 @@
+{
+  "versions": {
+    "20260616_141508": {
+      "model_name": "propensity_model",
+      "version": "20260616_141508",
+      "saved_at": "2026-06-16T14:15:08.843761",
+      "path": "models/propensity_model_20260616_141508/model.joblib",
+      "n_features": 2,
+      "treatment_rate": 0.25146666666666667
+    },
+    "20260616_141743": {
+      "model_name": "propensity_model",
+      "version": "20260616_141743",
+      "saved_at": "2026-06-16T14:17:43.381567",
+      "path": "models/propensity_model_20260616_141743/model.joblib",
+      "n_features": 2,
+      "treatment_rate": 0.25146666666666667
+    },
+    "20260616_141903": {
+      "model_name": "propensity_model",
+      "version": "20260616_141903",
+      "saved_at": "2026-06-16T14:19:03.989583",
+      "path": "models/propensity_model_20260616_141903/model.joblib",
+      "n_features": 2,
+      "treatment_rate": 0.25146666666666667
+    },
+    "20260616_142637": {
+      "model_name": "propensity_model",
+      "version": "20260616_142637",
+      "saved_at": "2026-06-16T14:26:37.096668",
+      "path": "models/propensity_model_20260616_142637/model.joblib",
+      "n_features": 2,
+      "treatment_rate": 0.25146666666666667
+    },
+    "20260616_142847": {
+      "model_name": "propensity_model",
+      "version": "20260616_142847",
+      "saved_at": "2026-06-16T14:28:47.408984",
+      "path": "models/propensity_model_20260616_142847/model.joblib",
+      "n_features": 2,
+      "treatment_rate": 0.25146666666666667
+    },
+    "20260616_143820": {
+      "model_name": "survival_model",
+      "version": "20260616_143820",
+      "saved_at": "2026-06-16T14:38:20.148334",
+      "path": "models/survival_model_20260616_143820/model.joblib",
+      "n_events": 1566,
+      "n_users": 10000
+    },
+    "20260616_144657": {
+      "model_name": "survival_model",
+      "version": "20260616_144657",
+      "saved_at": "2026-06-16T14:46:57.894523",
+      "path": "models/survival_model_20260616_144657/model.joblib",
+      "n_events": 1566,
+      "n_users": 10000
+    },
+    "20260616_144828": {
+      "model_name": "survival_model",
+      "version": "20260616_144828",
+      "saved_at": "2026-06-16T14:48:28.612273",
+      "path": "models/survival_model_20260616_144828/model.joblib",
+      "n_events": 1566,
+      "n_users": 10000
+    },
+    "20260616_145028": {
+      "model_name": "survival_model",
+      "version": "20260616_145028",
+      "saved_at": "2026-06-16T14:50:28.649235",
+      "path": "models/survival_model_20260616_145028/model.joblib",
+      "n_events": 1566,
+      "n_users": 10000
+    },
+    "20260616_145454": {
+      "model_name": "survival_model",
+      "version": "20260616_145454",
+      "saved_at": "2026-06-16T14:54:54.292516",
+      "path": "models/survival_model_20260616_145454/model.joblib",
+      "n_events": 1566,
+      "n_users": 10000
+    },
+    "20260616_145628": {
+      "model_name": "survival_model",
+      "version": "20260616_145628",
+      "saved_at": "2026-06-16T14:56:28.725131",
+      "path": "models/survival_model_20260616_145628/model.joblib",
+      "n_events": 1566,
+      "n_users": 10000
+    },
+    "20260616_150358": {
+      "model_name": "survival_model",
+      "version": "20260616_150358",
+      "saved_at": "2026-06-16T15:03:58.642349",
+      "path": "models/survival_model_20260616_150358/model.joblib",
+      "n_events": 1566,
+      "n_users": 10000
+    },
+    "20260616_153609": {
+      "model_name": "survival_model",
+      "version": "20260616_153609",
+      "saved_at": "2026-06-16T15:36:09.717208",
+      "path": "models/survival_model_20260616_153609/model.joblib",
+      "n_events": 1566,
+      "n_users": 10000
+    },
+    "20260616_154701": {
+      "model_name": "survival_model",
+      "version": "20260616_154701",
+      "saved_at": "2026-06-16T15:47:01.741059",
+      "path": "models/survival_model_20260616_154701/model.joblib",
+      "n_events": 660,
+      "n_users": 10000
+    },
+    "20260616_154911": {
+      "model_name": "survival_model",
+      "version": "20260616_154911",
+      "saved_at": "2026-06-16T15:49:11.592343",
+      "path": "models/survival_model_20260616_154911/model.joblib",
+      "n_events": 660,
+      "n_users": 10000
+    },
+    "20260616_155218": {
+      "model_name": "survival_model",
+      "version": "20260616_155218",
+      "saved_at": "2026-06-16T15:52:18.481235",
+      "path": "models/survival_model_20260616_155218/model.joblib",
+      "n_events": 660,
+      "n_users": 10000
+    },
+    "20260616_160351": {
+      "model_name": "survival_model",
+      "version": "20260616_160351",
+      "saved_at": "2026-06-16T16:03:51.064234",
+      "path": "models/survival_model_20260616_160351/model.joblib",
+      "n_events": 660,
+      "n_users": 10000
+    },
+    "20260616_162214": {
+      "model_name": "survival_model",
+      "version": "20260616_162214",
+      "saved_at": "2026-06-16T16:22:14.951870",
+      "path": "models/survival_model_20260616_162214/model.joblib",
+      "n_events": 660,
+      "n_users": 10000
+    },
+    "20260616_162759": {
+      "model_name": "survival_model",
+      "version": "20260616_162759",
+      "saved_at": "2026-06-16T16:27:59.166620",
+      "path": "models/survival_model_20260616_162759/model.joblib",
+      "n_events": 660,
+      "n_users": 10000
+    },
+    "20260616_163212": {
+      "model_name": "survival_model",
+      "version": "20260616_163212",
+      "saved_at": "2026-06-16T16:32:12.688270",
+      "path": "models/survival_model_20260616_163212/model.joblib",
+      "n_events": 660,
+      "n_users": 10000
+    },
+    "20260616_163738": {
+      "model_name": "survival_model",
+      "version": "20260616_163738",
+      "saved_at": "2026-06-16T16:37:38.715240",
+      "path": "models/survival_model_20260616_163738/model.joblib",
+      "n_events": 660,
+      "n_users": 10000
+    }
+  },
+  "latest": {
+    "propensity_model": "20260616_163738",
+    "survival_model": "20260616_163738"
+  }
+}

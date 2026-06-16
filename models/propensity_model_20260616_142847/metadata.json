@@ -1,0 +1,8 @@
+{
+  "model_name": "propensity_model",
+  "version": "20260616_142847",
+  "saved_at": "2026-06-16T14:28:47.408984",
+  "path": "models/propensity_model_20260616_142847/model.joblib",
+  "n_features": 2,
+  "treatment_rate": 0.25146666666666667
+}

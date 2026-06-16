@@ -49,3 +49,8 @@ experiment:
 fairness:
   metric: "equalized_odds"
   protected_attribute: "income_quintile"
+
+policy:
+  intervention_cost: 50
+  avg_loan_loss: 500
+  default_risk_increase: 0.02

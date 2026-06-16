@@ -17,8 +17,13 @@ class BiasCorrection:
         self.user_ids = None   # will be set in _prepare_data
 
     def _prepare_data(self):
-        # Use only post-treatment period where treatment is defined (0 or 1)
-        df_post = self.df[self.df['treatment_active'].isin([0,1])].copy()
+        # Filter to post-treatment period: months where any user has treatment_active == 1.
+        # This avoids mixing pre-treatment rows of treated users into the control group.
+        treatment_month = self.df.loc[self.df['treatment_active'] == 1, 'month'].min()
+        if pd.isna(treatment_month):
+            df_post = self.df.copy()
+        else:
+            df_post = self.df[self.df['month'] >= treatment_month].copy()
         df_post = df_post.dropna(subset=['revenue', 'treatment_active', 'income', 'credit_score'])
         self.Y = df_post['revenue'].values
         self.T = df_post['treatment_active'].values

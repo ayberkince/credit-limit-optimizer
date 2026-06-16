@@ -52,7 +52,6 @@ class CreditDataGenerator:
         return treatment
 
     def _generate_panel(self, df_users: pd.DataFrame, treatment: pd.Series) -> pd.DataFrame:
-        # <-- This line defines the method. Everything below MUST be indented.
         records = []
         cate_map = self.config['data']['true_cate']
         
@@ -74,14 +73,13 @@ class CreditDataGenerator:
                     treat_effect = 0
                 revenue = base_revenue + time_trend + treat_effect + np.random.normal(0, self.config['data']['revenue_noise_sd'])
                 revenue = max(0, revenue)
-                default = 0  # placeholder, will set final month later
                 records.append({
                     'user_id': user_id,
                     'month': month,
                     'treatment_assigned': treatment[user_id],
                     'treatment_active': 1 if (treatment[user_id] == 1 and month >= self.treatment_month) else 0,
                     'revenue': revenue,
-                    'default': default,
+                    'default': 0,  # placeholder
                     'income': user['income'],
                     'credit_score': user['credit_score'],
                     'income_quintile': income_qt,
@@ -90,19 +88,40 @@ class CreditDataGenerator:
         
         df_panel = pd.DataFrame(records)
         
-        # --- New default logic (logistic model) ---
+        # --- Default logic (logistic model) ---
         credit_norm = (df_users['credit_score'] - 600) / 100
         income_norm = (df_users['income'] - mean_income) / std_income
         risk_score = -3.0 + 0.3 * credit_norm - 0.2 * income_norm + 0.5 * treatment
-        default_prob = 1 / (1 + np.exp(-risk_score))
+        default_prob = expit(risk_score)
         default_prob = np.clip(default_prob, 0.01, 0.5)
-        
+
         default_final = (np.random.rand(self.n_users) < default_prob).astype(int)
+
+        # Sample time-to-default from geometric distribution for defaulting users.
+        # p=0.15 → right-skewed; most defaults in later months, realistic for credit data.
+        # Separate seed keeps this reproducible but independent from other draws.
+        np.random.seed(self.random_seed + 1)
+        event_months = np.random.geometric(p=0.15, size=self.n_users) - 1
+        event_months = np.clip(event_months, 1, self.n_months - 1)
+
+        # Non-defaulters are censored beyond the observation window (never default in study)
+        event_months = np.where(default_final == 1, event_months, self.n_months)
+
         df_users['default_final'] = default_final
-        
-        # Assign default only in the last month
-        df_panel.loc[df_panel['month'] == self.n_months-1, 'default'] = df_panel['user_id'].map(df_users.set_index('user_id')['default_final'])
-        
+        df_users['event_month'] = event_months
+
+        # Set default=1 only at each user's specific event_month.
+        # Non-defaulters have event_month = n_months (> any panel month), so they stay 0.
+        event_month_map = df_users.set_index('user_id')['event_month']
+        df_panel['default'] = (
+            df_panel['month'] == df_panel['user_id'].map(event_month_map)
+        ).astype(int)
+
+        # Sanity check: defaults should be spread across months, not all at the last month
+        defaults_by_month = df_panel.groupby('month')['default'].sum()
+        assert defaults_by_month.iloc[:-1].sum() > 0, \
+            "BUG: All defaults still at last month only. Fix event_month sampling."
+
         return df_panel
 
     def generate(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
