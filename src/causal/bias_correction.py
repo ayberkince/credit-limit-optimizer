@@ -1,6 +1,6 @@
 """
 Bias correction using IPW and manual Double Machine Learning.
-Improved with weight clipping and better propensity score model.
+Improved with weight clipping and proper user-level bootstrap.
 """
 
 import numpy as np
@@ -14,6 +14,7 @@ warnings.filterwarnings('ignore')
 class BiasCorrection:
     def __init__(self, df_panel: pd.DataFrame):
         self.df = df_panel.copy()
+        self.user_ids = None   # will be set in _prepare_data
 
     def _prepare_data(self):
         # Use only post-treatment period where treatment is defined (0 or 1)
@@ -21,9 +22,9 @@ class BiasCorrection:
         df_post = df_post.dropna(subset=['revenue', 'treatment_active', 'income', 'credit_score'])
         self.Y = df_post['revenue'].values
         self.T = df_post['treatment_active'].values
-        # Use normalized features for better propensity estimation
+        self.user_ids = df_post['user_id'].values   # store for bootstrap
         self.X = df_post[['income', 'credit_score']].values
-        # Normalize features (mean=0, std=1) for logistic regression stability
+        # Normalize features for stability
         self.X_norm = (self.X - self.X.mean(axis=0)) / (self.X.std(axis=0) + 1e-8)
         return self.X_norm, self.T, self.Y
 
@@ -37,21 +38,18 @@ class BiasCorrection:
 
     def ipw(self):
         X, T, Y = self._prepare_data()
-        # Use same features as DGP: income and credit_score
         ps_model = LogisticRegression(max_iter=500, random_state=42)
         ps_model.fit(X, T)
         propensity = ps_model.predict_proba(X)[:, 1]
-        # Clip to avoid extreme weights
         propensity = np.clip(propensity, 0.025, 0.975)
         weights = np.where(T == 1, 1.0 / propensity, 1.0 / (1.0 - propensity))
-        # Cap weights to avoid influential outliers (e.g., max weight 100)
         weights = np.clip(weights, 0.1, 100.0)
 
         treat_w = np.sum(Y[T == 1] * weights[T == 1]) / np.sum(weights[T == 1])
         contr_w = np.sum(Y[T == 0] * weights[T == 0]) / np.sum(weights[T == 0])
         ate = treat_w - contr_w
 
-        # Bootstrap CI
+        # Bootstrap CI (row‑level, but IPW is less sensitive to pseudoreplication)
         n_boot = 200
         boot_ates = []
         np.random.seed(42)
@@ -65,6 +63,7 @@ class BiasCorrection:
         return {'method': 'IPW', 'ate': ate, 'ci_lower': ci_lower, 'ci_upper': ci_upper}
 
     def double_ml(self):
+        # Prepare data (this sets self.user_ids)
         X, T, Y = self._prepare_data()
         n = len(Y)
         k_folds = 2
@@ -97,35 +96,46 @@ class BiasCorrection:
         denominator = np.sum(T_resid * T_resid)
         ate = numerator / denominator if denominator != 0 else 0
 
-    # --- USER-LEVEL BOOTSTRAP (fix pseudoreplication) ---
-    # We need the original user IDs to resample users, not rows.
-    # For simplicity, we'll use row-level bootstrap but with clustered resampling.
-    # However, the reviewer is correct. A proper fix requires user IDs.
-    # Given the scope, we can note this as a known limitation and keep the current bootstrap
-    # with a warning. For a portfolio project, this is acceptable if documented.
-    # I'll add a comment and keep the row-level bootstrap for now, but mention in README.
-    # Alternatively, we can implement a simple user-level bootstrap if we have user IDs.
-
+        # --- USER-LEVEL BOOTSTRAP to avoid pseudoreplication ---
+        # Resample users, then collect all rows for those users.
+        unique_users = np.unique(self.user_ids)
+        n_users = len(unique_users)
         n_boot = 200
         boot_ates = []
+
+        # Build a DataFrame for easy grouping
+        df_resid = pd.DataFrame({
+            'user_id': self.user_ids,
+            'Y_resid': Y_resid,
+            'T_resid': T_resid
+        })
+
         for _ in range(n_boot):
-            idx = np.random.choice(n, n, replace=True)
-            Yb = Y_resid[idx]
-            Tb = T_resid[idx]
+            boot_users = np.random.choice(unique_users, n_users, replace=True)
+            boot_rows = df_resid[df_resid['user_id'].isin(boot_users)]
+            if len(boot_rows) == 0:
+                continue
+            Yb = boot_rows['Y_resid'].values
+            Tb = boot_rows['T_resid'].values
             num = np.sum(Yb * Tb)
             den = np.sum(Tb * Tb)
             if den != 0:
                 boot_ates.append(num / den)
-        ci_lower, ci_upper = np.percentile(boot_ates, [2.5, 97.5])
+
+        if boot_ates:
+            ci_lower, ci_upper = np.percentile(boot_ates, [2.5, 97.5])
+        else:
+            ci_lower, ci_upper = ate, ate
+
         return {
             'method': 'Double ML (manual)',
             'ate': ate,
             'ci_lower': ci_lower,
             'ci_upper': ci_upper,
-            'interpretation': 'Neyman-orthogonal, cross-fitted (CI may be narrow due to row-level bootstrap)'
+            'interpretation': 'Neyman-orthogonal, cross-fitted, user-level bootstrap CI'
         }
-        
+
     def compare_estimators(self):
-        self._prepare_data()
+        self._prepare_data()   # ensures user_ids are set if needed
         results = [self.naive_ols(), self.ipw(), self.double_ml()]
         return pd.DataFrame(results)

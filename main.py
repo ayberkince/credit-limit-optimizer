@@ -21,6 +21,7 @@ from src.causal.diff_in_diff import DiffInDifferences
 from src.experiment.power_analysis import PowerAnalysis
 from src.experiment.sequential_test import SequentialTest
 from src.inference.fairness import FairnessAuditor
+from src.policy.decision_engine import DecisionEngine
 
 def main(config_path="config.yaml"):
     logger.info("Loading configuration...")
@@ -54,6 +55,16 @@ def main(config_path="config.yaml"):
     results = bc.compare_estimators()
     print("\n=== Causal Effect Estimates ===")
     print(results.round(2).to_string(index=False))
+
+    logger.info("Step 2.5: Policy Decision Engine - converting CATE to business recommendations...")
+    cate_map = config['data']['true_cate']   # we have this
+    intervention_cost = config.get('policy', {}).get('intervention_cost', 50)
+    avg_loan_loss = config.get('policy', {}).get('avg_loan_loss', 500)
+    default_risk_increase = config.get('policy', {}).get('default_risk_increase', 0.02)
+    
+    engine = DecisionEngine(cate_map, intervention_cost, avg_loan_loss, default_risk_increase)
+    report = engine.summary_report(users)
+    print(report)
 
     logger.info("Step 3: Robustness Check - Difference-in-Differences...")
     did = DiffInDifferences(panel, treatment_month=config['data']['treatment_month'])

@@ -63,7 +63,7 @@ class CreditDataGenerator:
         for _, user in df_users.iterrows():
             user_id = user['user_id']
             income_qt = user['income_quintile']
-            base_revenue = 50 + 0.1 * user['income'] + np.random.normal(0, 10)
+            base_revenue = 50 + 0.001 * user['income'] + np.random.normal(0, 10)
             cate = cate_map[income_qt]
             
             for month in range(self.n_months):

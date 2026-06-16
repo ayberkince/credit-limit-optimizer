@@ -30,7 +30,7 @@ data:
     medium_low: 80
     medium: 120
     medium_high: 100
-    high: 60
+    high: 90
 
   # Correlation between income and baseline spending (reduced from 0.6 to 0.3 to lower OLS bias)
   spending_income_corr: 0.3

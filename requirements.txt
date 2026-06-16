@@ -8,3 +8,5 @@ streamlit>=1.10.0
 pyyaml>=5.4.0
 networkx>=2.6
 streamlit>=1.10.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
